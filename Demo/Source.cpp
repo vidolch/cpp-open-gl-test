@@ -6,86 +6,52 @@
 #include <thread>
 #include <sstream>
 #include <stdlib.h>
+#include "Vector.h"
+#include "Wall.h"
+#include "Dot.h"
 
-char title[] = "3D Shapes";
-float xpos = 0.0f;
-float ypos = 0.0f;
-float xmovement = 0.001f;
-float m_mouseX = 0.0f;
-float m_mouseY = 0.0f;
+int middleX = 160;
+int middleY = 160;
+// angle of rotation for the camera direction
+float angley = 0.0;
+float anglex = 0.0;
+// actual vector representing the camera's direction
+float lx = 0.0f, lz = -1.0f, ly = 1.3f;
+// XZ position of the camera
+float x = 0.0f, z = 5.0f, y = 1.0f;
+Wall wall = Wall();
 
 using namespace std;
 
-void initGL() {
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
-	glClearDepth(1.0f);                   // Set background depth to farthest
-	glEnable(GL_DEPTH_TEST);   // Enable depth testing for z-culling
-	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
-	glShadeModel(GL_SMOOTH);   // Enable smooth shading
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Nice perspective corrections
-}
 
-/* Handler for window-repaint event. Called back when the window first appears and
-whenever the window needs to be re-painted. */
-void display() {
+void draw(void) {
 	glMatrixMode(GL_MODELVIEW);     // To operate on model-view matrix
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
-	glLoadIdentity();                 // Reset the model-view matrix
+									// Clear Color and Depth Buffers
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Reset transformations
+	glLoadIdentity();
+	// Set the camera
+	gluLookAt(x, y, z,
+		x + lx, ly, z + lz,
+		0.0f, 1.0f, 0.0f);
+
+	// Draw ground
+	glColor3f(0.9f, 0.9f, 0.9f);
+	glBegin(GL_QUADS);
+	glVertex3f(-100.0f, 0.0f, -100.0f);
+	glVertex3f(-100.0f, 0.0f, 100.0f);
+	glVertex3f(100.0f, 0.0f, 100.0f);
+	glVertex3f(100.0f, 0.0f, -100.0f);
+	glEnd();
 	
-	gluLookAt(0, 0, 0, // eye x, y, x
-		xpos, ypos, -1, // center x, y, x
-		0, 1, 0); // up x, y, x
-									// Render a color-cube consisting of 6 quads with different colors
-	glTranslatef(1.5f, 0.0f, -7.0f);  // Move right and into the screen
+	wall.drawWall(20, 40, 0.2, Dot(-10, 0, -10), 0);
+	wall.drawWall(20, 3, 0.2, Dot(-10, 0, -10), 90);
+	wall.drawWall(20, 3, 0.2, Dot(-10, 0, 10), 0);
+	wall.drawWall(20, 3, 0.2, Dot(-10, 0, 10), 90);
 
-	glBegin(GL_QUADS);                // Begin drawing the color cube with 6 quads
-									  // Top face (y = 1.0f)
-									  // Define vertices in counter-clockwise (CCW) order with normal pointing out
-	glColor3f(0.0f, 1.0f, 0.0f);     // Green
-	glVertex3f(1.0f, 1.0f, -1.0f);
-	glVertex3f(-1.0f, 1.0f, -1.0f);
-	glVertex3f(-1.0f, 1.0f, 1.0f);
-	glVertex3f(1.0f, 1.0f, 1.0f);
-
-	// Bottom face (y = -1.0f)
-	glColor3f(1.0f, 0.5f, 0.0f);     // Orange
-	glVertex3f(1.0f, -1.0f, 1.0f);
-	glVertex3f(-1.0f, -1.0f, 1.0f);
-	glVertex3f(-1.0f, -1.0f, -1.0f);
-	glVertex3f(1.0f, -1.0f, -1.0f);
-
-	// Front face  (z = 1.0f)
-	glColor3f(1.0f, 0.0f, 0.0f);     // Red
-	glVertex3f(1.0f, 1.0f, 1.0f);
-	glVertex3f(-1.0f, 1.0f, 1.0f);
-	glVertex3f(-1.0f, -1.0f, 1.0f);
-	glVertex3f(1.0f, -1.0f, 1.0f);
-
-	// Back face (z = -1.0f)
-	glColor3f(1.0f, 1.0f, 0.0f);     // Yellow
-	glVertex3f(1.0f, -1.0f, -1.0f);
-	glVertex3f(-1.0f, -1.0f, -1.0f);
-	glVertex3f(-1.0f, 1.0f, -1.0f);
-	glVertex3f(1.0f, 1.0f, -1.0f);
-
-	// Left face (x = -1.0f)
-	glColor3f(0.0f, 0.0f, 1.0f);     // Blue
-	glVertex3f(-1.0f, 1.0f, 1.0f);
-	glVertex3f(-1.0f, 1.0f, -1.0f);
-	glVertex3f(-1.0f, -1.0f, -1.0f);
-	glVertex3f(-1.0f, -1.0f, 1.0f);
-
-	// Right face (x = 1.0f)
-	glColor3f(1.0f, 0.0f, 1.0f);     // Magenta
-	glVertex3f(1.0f, 1.0f, -1.0f);
-	glVertex3f(1.0f, 1.0f, 1.0f);
-	glVertex3f(1.0f, -1.0f, 1.0f);
-	glVertex3f(1.0f, -1.0f, -1.0f);
-	glEnd();  
-	// End of drawing color-cube
-	
-	glFlush();
-	glutSwapBuffers();  // Swap the front and back frame buffers (double buffering)
+	glutSwapBuffers();
 }
 
 /* Handler for window re-size event. Called back when the window first appears and
@@ -105,49 +71,100 @@ void reshape(GLsizei width, GLsizei height) {  // GLsizei for non-negative integ
 	gluPerspective(45.0f, aspect, 0.1f, 100.0f);
 }
 
-void print(int x, int y, int z, const char *string)
+void processNormalKeys(unsigned char key, int x, int y)
 {
-	//set the position of the text in the window using the x and y coordinates
-	glRasterPos2f(x, y);
-	//get the length of the string to display
-	int len = (int)strlen(string);
-
-	//loop to display character by character
-	// color = white
-	glColor3f(1, 1, 1);
-	for (int i = 0; i < len; i++)
-	{		
-		glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, string[i]);
+	float fraction = 0.8f;
+	float angleforce = 0.1f;
+	switch (key)
+	{
+			// 119 - w
+		case 119:
+			x += lx * fraction;
+			z += lz * fraction;
+			break;
+			// 115 - s
+		case 115:
+			x -= lx * fraction;
+			z -= lz * fraction;
+			break;
+			// 100 - d
+		case 100: 
+			
+			break;
+			// 97 - a
+		case 97: 
+			
+			break;
+			// 113 - q
+		case 113:
+			anglex -= angleforce;
+			lx = sin(anglex);
+			lz = -cos(anglex);
+			break;
+			// 101 - e
+		case 101:
+			anglex += angleforce;
+			lx = sin(anglex);
+			lz = -cos(anglex);
+			break;
+			// 122 - z
+		case 122:
+			if (ly == 0.0f) break;
+			ly -= angleforce;
+			break;
+			// 120 - x
+		case 120:
+			if (ly == 2.0f) break;
+			ly += angleforce;
+			break;
+			// esc - 27
+		case 27:
+			exit(0);
+			break;
 	}
-	glColor3f(0, 0, 0);
 }
 
-void animation(void)
-{
-	POINT point;
-	GetCursorPos(&point);
-	HWND hwnd = GetForegroundWindow();
-	ScreenToClient(hwnd, &point);
-	m_mouseX = (float)point.x;
-	m_mouseY = (float)point.y;
-	xpos += m_mouseX / 10000;
-	ypos += m_mouseY / 10000;
-	std::ostringstream ss;
-	ss << m_mouseX << " - " << m_mouseY;
-	display();
+void idle() {
+	//POINT cursor;
+	//GetCursorPos(&cursor);
+
+	//int deltaX = cursor.x - middleX;
+	//int deltaY = cursor.y - middleY;
+
+	//glutWarpPointer(middleX, middleY); // could also use SetCursorPos() if you're only going to use Windows
+
+	//lx = sin(deltaX / 50);
+	//lz = -cos(deltaY / 50);
+	draw();
 }
+
 /* Main function: GLUT runs as a console application starting at main() */
 int main(int argc, char** argv) {
-	glutInit(&argc, argv);            // Initialize GLUT
-	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB); // Enable double buffered mode
-	glutInitWindowSize(640, 480);   // Set the window's initial width & height
-	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
-	glutCreateWindow(argv[0]);          // Create window with the given title
-	glDisable(GL_LIGHTING);
-	initGL();                       // Our own OpenGL initialization
-	glutDisplayFunc(display);       // Register callback handler for window re-paint event
-	glutReshapeFunc(reshape);       // Register callback handler for window re-size event
-	glutIdleFunc(animation);
-	glutMainLoop();                 // Enter the infinite event-processing loop
+	// init GLUT and create window
+
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(640, 480);
+	glutCreateWindow("Lighthouse3D - GLUT Tutorial");
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
+	glClearDepth(1.0f);                   // Set background depth to farthest
+	glEnable(GL_DEPTH_TEST);   // Enable depth testing for z-culling
+	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
+	glShadeModel(GL_SMOOTH);   // Enable smooth shading
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Nice perspective corrections
+
+														// register callbacks
+	glutDisplayFunc(draw);
+	glutReshapeFunc(reshape);
+	glutIdleFunc(idle);
+	glutKeyboardFunc(processNormalKeys);
+
+	// OpenGL init
+	glEnable(GL_DEPTH_TEST);
+
+	// enter GLUT event processing cycle
+	glutMainLoop();
 	return 0;
 }
